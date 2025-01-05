@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sprite Editor Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"
+    ></script>
+  </head>
+  <body class="bg-gray-100">
+    <div class="max-w-4xl mx-auto p-6">
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold mb-6 text-center">Sprite Editor Tool</h1>
+
+        <div
+          id="dropZone"
+          class="border-2 border-dashed border-gray-300 h-56 flex justify-center items-center flex-col rounded-md p-6 text-center mb-6 transition-colors duration-200 ease-in-out"
+        >
+          <p class="text-gray-600 mb-4">Drag & drop a PNG image here or</p>
+          <input type="file" class="w-56" id="fileInput" accept="image/png" />
+        </div>
+
+        <div id="controls" class="hidden space-y-4 mb-6">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">
+                Sprite Width
+              </label>
+              <input
+                type="number"
+                id="spriteWidth"
+                class="border p-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">
+                Sprite Height
+              </label>
+              <input
+                type="number"
+                id="spriteHeight"
+                class="border p-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div class="flex items-center">
+            <label
+              class="p-2 cursor-pointer ml-2 flex items-center gap-2 text-sm text-gray-900"
+            >
+              <input
+                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                id="lockAspectRatio"
+                type="checkbox"
+                checked
+              />
+              Aspect Ratio 1:1
+            </label>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="flex flex-col gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">
+                  X Block
+                </label>
+                <input
+                  type="number"
+                  id="xBlock"
+                  min="0"
+                  value="0"
+                  class="border p-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">
+                  Y Block
+                </label>
+                <input
+                  type="number"
+                  id="yBlock"
+                  min="0"
+                  value="0"
+                  class="border p-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div class="">
+              <label class="block text-sm font-medium text-gray-700">
+                Cropped Border Color
+              </label>
+              <input
+                class="border p-1 h-32 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                id="changeBorderColor"
+                type="color"
+              />
+            </div>
+          </div>
+          <!-- 
+          <button
+            id="cropButton"
+            class="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-200 ease-in-out"
+          >
+            Crop Sprite
+          </button> -->
+        </div>
+
+        <div class="flex flex-col items-center space-y-4">
+          <div class="relative">
+            <img id="preview" alt="Preview" class="hidden" />
+            <div
+              id="cropped-area"
+              class="absolute border-2 border-gray-300 border-dashed"
+            ></div>
+          </div>
+          <h4 class="text-2xl text-center font-bold my-2">
+            Croped Area Preview
+          </h4>
+          <img
+            id="croppedPreview"
+            alt="Cropped Preview"
+            class="hidden border-2 border-dashed border-gray-300 m-2"
+          />
+
+          <div id="actionButtons" class="hidden space-x-4">
+            <button
+              id="downloadButton"
+              class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors duration-200 ease-in-out"
+            >
+              Download PNG
+            </button>
+            <button
+              id="copyXpmButton"
+              x-data="{ copied: false }"
+              x-on:click="
+                            navigator.clipboard.writeText($el.getAttribute('data-content'));
+                            copied = true;
+                            setTimeout(() => copied = false, 2000)
+                        "
+              class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-200 ease-in-out"
+            >
+              <span x-text="copied ? 'Copied!' : 'Copy XPM Content'"></span>
+            </button>
+          </div>
+        </div>
+
+        <textarea
+          id="result"
+          class="hidden w-full bg-gray-100 p-4 rounded-md mt-4 whitespace-pre-wrap text-sm"
+          rows="20"
+        ></textarea>
+      </div>
+    </div>
+
+    <script>
+      const dropZone = document.getElementById("dropZone");
+      const fileInput = document.getElementById("fileInput");
+      const preview = document.getElementById("preview");
+      const croppedArea = document.getElementById("cropped-area");
+      const controls = document.getElementById("controls");
+      const spriteWidth = document.getElementById("spriteWidth");
+      const spriteHeight = document.getElementById("spriteHeight");
+      const lockAspectRatio = document.getElementById("lockAspectRatio");
+      const xBlock = document.getElementById("xBlock");
+      const yBlock = document.getElementById("yBlock");
+      const changeBorderColor = document.getElementById("changeBorderColor");
+      //   const cropButton = document.getElementById("cropButton");
+      const croppedPreview = document.getElementById("croppedPreview");
+      const downloadButton = document.getElementById("downloadButton");
+      const copyXpmButton = document.getElementById("copyXpmButton");
+      const result = document.getElementById("result");
+      const actionButtons = document.getElementById("actionButtons");
+
+      let originalImage = null;
+
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("bg-blue-50", "border-blue-500");
+      });
+
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("bg-blue-50", "border-blue-500");
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("bg-blue-50", "border-blue-500");
+        const file = e.dataTransfer.files[0];
+        if (file && file.type === "image/png") {
+          handleFile(file);
+        }
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          handleFile(file);
+        }
+      });
+
+      function handleFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            originalImage = img;
+            preview.src = e.target.result;
+            preview.classList.remove("hidden");
+            controls.classList.remove("hidden");
+            spriteWidth.value = img.width;
+            spriteHeight.value = img.height;
+            updateBlockLimits();
+            drawCroppedArea();
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      changeBorderColor.value =
+        localStorage.getItem("selectedBorderColor") || "black";
+      changeBorderColor.addEventListener("change", (e) => {
+        const newColor = e.target.value;
+        localStorage.setItem("selectedBorderColor", newColor);
+        drawCroppedArea();
+      });
+
+      function drawCroppedArea() {
+        // Parse input values
+        const width = parseInt(spriteWidth.value, 10);
+        const height = parseInt(spriteHeight.value, 10);
+        const x = parseInt(xBlock.value, 10) * width;
+        const y = parseInt(yBlock.value, 10) * height;
+        const borderColor =
+          localStorage.getItem("selectedBorderColor") || "black";
+
+        croppedArea.style.borderColor = borderColor;
+        croppedPreview.style.borderColor = borderColor;
+
+        // Validate inputs (optional but recommended)
+        if (isNaN(width) || isNaN(height) || isNaN(x) || isNaN(y)) {
+          console.error(
+            "Invalid input values. Please check your sprite dimensions and block indices.",
+            { width, height, x, y }
+          );
+          return;
+        }
+
+        // Set the size of the cropped area
+        croppedArea.style.width = `${width}px`;
+        croppedArea.style.height = `${height}px`;
+
+        // Set the position of the cropped area
+        croppedArea.style.position = "absolute"; // Ensure absolute positioning
+        croppedArea.style.left = `${x}px`; // Offset by calculated x
+        croppedArea.style.top = `${y}px`; // Offset by calculated y
+
+        console.log(
+          `Cropped area updated: Width=${width}px, Height=${height}px, X=${x}px, Y=${y}px`
+        );
+        cropSprite();
+      }
+
+      function updateBlockLimits() {
+        const maxX =
+          Math.floor(originalImage.width / parseInt(spriteWidth.value)) - 1;
+        const maxY =
+          Math.floor(originalImage.height / parseInt(spriteHeight.value)) - 1;
+        xBlock.max = maxX;
+        yBlock.max = maxY;
+      }
+
+      xBlock.addEventListener("input", () => {
+        drawCroppedArea();
+      });
+
+      yBlock.addEventListener("input", () => {
+        drawCroppedArea();
+      });
+
+      spriteWidth.addEventListener("input", () => {
+        if (lockAspectRatio.checked && originalImage) {
+          spriteHeight.value = spriteWidth.value;
+        }
+        updateBlockLimits();
+        drawCroppedArea();
+      });
+
+      spriteHeight.addEventListener("input", () => {
+        if (lockAspectRatio.checked && originalImage) {
+          spriteWidth.value = spriteHeight.value;
+        }
+        updateBlockLimits();
+        drawCroppedArea();
+      });
+
+      //   cropButton.addEventListener("click", cropSprite);
+
+      function cropSprite() {
+        if (!originalImage) return;
+
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const width = parseInt(spriteWidth.value);
+        const height = parseInt(spriteHeight.value);
+        const x = parseInt(xBlock.value) * width;
+        const y = parseInt(yBlock.value) * height;
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(originalImage, x, y, width, height, 0, 0, width, height);
+
+        croppedPreview.src = canvas.toDataURL("image/png");
+        croppedPreview.classList.remove("hidden");
+        actionButtons.classList.remove("hidden");
+
+        // Convert to XPM
+        convertToXPM(canvas);
+
+        // Setup download button
+        downloadButton.onclick = () => {
+          const link = document.createElement("a");
+          link.download = "sprite.png";
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+        };
+      }
+
+      //   function generateColorChars() {
+      //     const chars =
+      //       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -+=()[]*&^%$#@!`~?/><.,_";
+      //     const colorChars = [];
+      //     for (let i = 0; i < chars.length; i++) {
+      //       for (let j = 0; j < chars.length; j++) {
+      //         colorChars.push(chars[i] + chars[j]);
+      //       }
+      //     }
+      //     return colorChars;
+      //   }
+
+      function generateColorChars(numColors) {
+        const chars =
+          "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -+=()[]*&^%$#@!`~?/><.,_";
+        const colorChars = [];
+        let maxLength = 1; // Start with single-character combinations
+
+        while (colorChars.length < numColors) {
+          generateCombinations(chars, maxLength, "", colorChars, numColors);
+          maxLength++; // Increase the length of combinations if not enough
+        }
+
+        return colorChars;
+
+        // Helper function to recursively generate combinations
+        function generateCombinations(
+          chars,
+          length,
+          current,
+          colorChars,
+          maxColors
+        ) {
+          if (current.length === length) {
+            colorChars.push(current);
+            return;
+          }
+
+          for (
+            let i = 0;
+            i < chars.length && colorChars.length < maxColors;
+            i++
+          ) {
+            generateCombinations(
+              chars,
+              length,
+              current + chars[i],
+              colorChars,
+              maxColors
+            );
+          }
+        }
+      }
+
+      function convertToXPM(canvas) {
+        const ctx = canvas.getContext("2d");
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const pixels = imageData.data;
+
+        const colorMap = new Map();
+
+        // Identify unique colors in the image
+        for (let i = 0; i < pixels.length; i += 4) {
+          const r = pixels[i];
+          const g = pixels[i + 1];
+          const b = pixels[i + 2];
+          const a = pixels[i + 3];
+
+          const colorKey = `${r},${g},${b},${a}`;
+          if (!colorMap.has(colorKey)) {
+            colorMap.set(colorKey, null);
+          }
+        }
+
+        const uniqueColorsCount = colorMap.size;
+
+        // Generate character combinations based on the number of unique colors
+        const colorChars = generateColorChars(uniqueColorsCount);
+        let charIndex = 0;
+
+        // Map unique colors to character combinations
+        for (const colorKey of colorMap.keys()) {
+          colorMap.set(colorKey, colorChars[charIndex++]);
+        }
+
+        let xpmContent = `/* XPM */\nstatic char *result[] = {\n/* columns rows colors chars-per-pixel */\n`;
+        xpmContent += `"${canvas.width} ${canvas.height} ${colorMap.size} 2",\n`;
+
+        for (const [color, chars] of colorMap.entries()) {
+          const [r, g, b, a] = color.split(",").map(Number);
+          let hex;
+          if (a === 0) {
+            hex = "None";
+          } else {
+            hex = `#${r.toString(16).padStart(2, "0")}${g
+              .toString(16)
+              .padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+          }
+          xpmContent += `"${chars} c ${hex}",\n`;
+        }
+
+        for (let y = 0; y < canvas.height; y++) {
+          let row = '"';
+          for (let x = 0; x < canvas.width; x++) {
+            const i = (y * canvas.width + x) * 4;
+            const r = pixels[i];
+            const g = pixels[i + 1];
+            const b = pixels[i + 2];
+            const a = pixels[i + 3];
+
+            const colorKey = `${r},${g},${b},${a}`;
+            row += colorMap.get(colorKey);
+          }
+          row += `"${y < canvas.height - 1 ? "," : ""}\n`;
+          xpmContent += row;
+        }
+
+        xpmContent += "};";
+
+        result.textContent = xpmContent;
+        result.classList.remove("hidden");
+        copyXpmButton.setAttribute("data-content", xpmContent);
+      }
+    </script>
+  </body>
+</html>
