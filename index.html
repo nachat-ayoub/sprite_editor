@@ -135,13 +135,6 @@
               />
             </div>
           </div>
-          <!-- 
-					<button
-						id="cropButton"
-						class="w-full bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-200 ease-in-out"
-					>
-						Crop Sprite
-					</button> -->
         </div>
 
         <section id="cropping_section" class="hidden">
@@ -169,6 +162,14 @@
               >
                 Download PNG
               </button>
+
+              <button
+                id="downloadXpmButton"
+                class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition-colors duration-200 ease-in-out"
+              >
+                Download XPM
+              </button>
+
               <button
                 id="copyXpmButton"
                 x-data="{ copied: false }"
@@ -206,9 +207,9 @@
       const xBlock = document.getElementById("xBlock");
       const yBlock = document.getElementById("yBlock");
       const changeBorderColor = document.getElementById("changeBorderColor");
-      //   const cropButton = document.getElementById("cropButton");
       const croppedPreview = document.getElementById("croppedPreview");
       const downloadButton = document.getElementById("downloadButton");
+      const downloadXpmButton = document.getElementById("downloadXpmButton");
       const copyXpmButton = document.getElementById("copyXpmButton");
       const result = document.getElementById("result");
       const actionButtons = document.getElementById("actionButtons");
@@ -337,8 +338,6 @@
         drawCroppedArea();
       });
 
-      //   cropButton.addEventListener("click", cropSprite);
-
       function cropSprite() {
         if (!originalImage) return;
 
@@ -369,21 +368,9 @@
         };
       }
 
-      //   function generateColorChars() {
-      //     const chars =
-      //       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -+=()[]*&^%$#@!`~?/><.,_";
-      //     const colorChars = [];
-      //     for (let i = 0; i < chars.length; i++) {
-      //       for (let j = 0; j < chars.length; j++) {
-      //         colorChars.push(chars[i] + chars[j]);
-      //       }
-      //     }
-      //     return colorChars;
-      //   }
-
       function generateColorChars(numColors) {
         const chars =
-          "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -+=()[]*&^%$#@!`~?/><.,_";
+          " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-+=()[]*&^%$#@!`~?/><.,_";
         const colorChars = [];
         let maxLength = 1; // Start with single-character combinations
 
@@ -492,6 +479,19 @@
         result.classList.remove("hidden");
         copyXpmButton.setAttribute("data-content", xpmContent);
       }
+
+      downloadXpmButton.onclick = () => {
+				const xpmContent = copyXpmButton.getAttribute('data-content');
+        const blob = new Blob([xpmContent], { type: "text/plain" });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "sprite.xpm";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      };
     </script>
   </body>
 </html>
