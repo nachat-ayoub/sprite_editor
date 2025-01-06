@@ -526,7 +526,7 @@
         }
 
         let xpmContent = `/* XPM */\nstatic char *result[] = {\n/* columns rows colors chars-per-pixel */\n`;
-        xpmContent += `"${canvas.width} ${canvas.height} ${colorMap.size} 2",\n`;
+        xpmContent += `"${canvas.width} ${canvas.height} ${colorMap.size} 1",\n`;
 
         for (const [color, chars] of colorMap.entries()) {
           const [r, g, b, a] = color.split(",").map(Number);
