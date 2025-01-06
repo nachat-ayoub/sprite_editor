@@ -97,6 +97,19 @@
             </label>
           </div>
 
+          <div>
+            <label class="block text-sm font-medium text-gray-700">
+              Resized Tile Size (px)
+            </label>
+            <input
+              type="number"
+              id="resizedTileSize"
+              min="1"
+              value="50"
+              class="border p-2 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            />
+          </div>
+
           <div class="grid grid-cols-2 gap-4">
             <div class="flex flex-col gap-4">
               <div>
@@ -214,6 +227,10 @@
       const result = document.getElementById("result");
       const actionButtons = document.getElementById("actionButtons");
 
+      const resizedTileSize = document.getElementById("resizedTileSize");
+      let tilesWidth = 0;
+      let tilesHeight = 0;
+
       let originalImage = null;
 
       dropZone.addEventListener("dragover", (e) => {
@@ -251,8 +268,15 @@
             preview.classList.remove("hidden");
             croppingSection.classList.remove("hidden");
             controls.classList.remove("hidden");
-            spriteWidth.value = img.width;
-            spriteHeight.value = img.height;
+
+            // Set initial sprite dimensions if not set
+            if (!spriteWidth.value || !spriteHeight.value) {
+              spriteWidth.value = img.width;
+              spriteHeight.value = img.height;
+            }
+
+            // Calculate tiles dimensions
+            calculateTileDimensions();
             updateBlockLimits();
             drawCroppedArea();
           };
@@ -268,6 +292,16 @@
         localStorage.setItem("selectedBorderColor", newColor);
         drawCroppedArea();
       });
+
+      function calculateTileDimensions() {
+        const spriteW = parseInt(spriteWidth.value);
+        const spriteH = parseInt(spriteHeight.value);
+
+        tilesWidth = Math.floor(originalImage.width / spriteW);
+        tilesHeight = Math.floor(originalImage.height / spriteH);
+
+        console.log(`Tiles: ${tilesWidth}x${tilesHeight}`);
+      }
 
       function drawCroppedArea() {
         // Parse input values
@@ -326,47 +360,97 @@
         if (lockAspectRatio.checked && originalImage) {
           spriteHeight.value = spriteWidth.value;
         }
-        updateBlockLimits();
-        drawCroppedArea();
+        readjustImage();
       });
 
       spriteHeight.addEventListener("input", () => {
         if (lockAspectRatio.checked && originalImage) {
           spriteWidth.value = spriteHeight.value;
         }
-        updateBlockLimits();
-        drawCroppedArea();
+        readjustImage();
       });
 
       function cropSprite() {
         if (!originalImage) return;
 
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
         const width = parseInt(spriteWidth.value);
         const height = parseInt(spriteHeight.value);
         const x = parseInt(xBlock.value) * width;
         const y = parseInt(yBlock.value) * height;
 
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(originalImage, x, y, width, height, 0, 0, width, height);
+        // Create temporary canvas for initial crop
+        const tempCanvas = document.createElement("canvas");
+        const tempCtx = tempCanvas.getContext("2d");
+        tempCanvas.width = width;
+        tempCanvas.height = height;
 
-        croppedPreview.src = canvas.toDataURL("image/png");
+        // Use nearest-neighbor interpolation for pixel art
+        tempCtx.imageSmoothingEnabled = false;
+        tempCtx.drawImage(
+          originalImage,
+          x,
+          y,
+          width,
+          height,
+          0,
+          0,
+          width,
+          height
+        );
+
+        // Create final canvas with resized dimensions
+        const finalCanvas = document.createElement("canvas");
+        const finalCtx = finalCanvas.getContext("2d");
+        const resizeScale = parseInt(resizedTileSize.value) / width;
+        finalCanvas.width = width * resizeScale;
+        finalCanvas.height = height * resizeScale;
+
+        // Use nearest-neighbor interpolation for the resize
+        finalCtx.imageSmoothingEnabled = false;
+        finalCtx.drawImage(
+          tempCanvas,
+          0,
+          0,
+          width,
+          height,
+          0,
+          0,
+          finalCanvas.width,
+          finalCanvas.height
+        );
+
+        croppedPreview.src = finalCanvas.toDataURL("image/png");
         croppedPreview.classList.remove("hidden");
         actionButtons.classList.remove("hidden");
 
-        // Convert to XPM
-        convertToXPM(canvas);
+        // Convert to XPM using the resized canvas
+        convertToXPM(finalCanvas);
 
-        // Setup download button
+        // Setup download button with resized image
         downloadButton.onclick = () => {
           const link = document.createElement("a");
           link.download = "sprite.png";
-          link.href = canvas.toDataURL("image/png");
+          link.href = finalCanvas.toDataURL("image/png");
           link.click();
         };
       }
+
+      resizedTileSize.addEventListener("input", (e) => {
+        localStorage.setItem("resizedTileSize", parseInt(e.target.value));
+        drawCroppedArea();
+      });
+
+      function readjustImage() {
+        calculateTileDimensions();
+        updateBlockLimits();
+        cropSprite();
+      }
+
+      const defaultResizedTileSize = parseInt(
+        localStorage.getItem("resizedTileSize") || 50
+      );
+
+      resizedTileSize.value = defaultResizedTileSize;
 
       function generateColorChars(numColors) {
         const chars =
@@ -481,7 +565,7 @@
       }
 
       downloadXpmButton.onclick = () => {
-				const xpmContent = copyXpmButton.getAttribute('data-content');
+        const xpmContent = copyXpmButton.getAttribute("data-content");
         const blob = new Blob([xpmContent], { type: "text/plain" });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
