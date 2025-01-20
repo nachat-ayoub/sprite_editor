@@ -175,7 +175,12 @@
               >
                 Download PNG
               </button>
-
+              <button
+                id="copyPngButton"
+                class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors duration-200 ease-in-out"
+              >
+                Copy as PNG
+              </button>
               <button
                 id="downloadXpmButton"
                 class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 transition-colors duration-200 ease-in-out"
@@ -224,6 +229,7 @@
       const downloadButton = document.getElementById("downloadButton");
       const downloadXpmButton = document.getElementById("downloadXpmButton");
       const copyXpmButton = document.getElementById("copyXpmButton");
+      const copyPngButton = document.getElementById("copyPngButton");
       const result = document.getElementById("result");
       const actionButtons = document.getElementById("actionButtons");
 
@@ -433,6 +439,19 @@
           link.href = finalCanvas.toDataURL("image/png");
           link.click();
         };
+
+        copyPngButton.onclick = async () => {
+          finalCanvas.toBlob(async (blob) => {
+            try {
+              await navigator.clipboard.write([
+                new ClipboardItem({ "image/png": blob }),
+              ]);
+              console.log("Cropped PNG copied to clipboard!");
+            } catch (err) {
+              console.error("Failed to copy PNG to clipboard:", err);
+            }
+          });
+        };
       }
 
       resizedTileSize.addEventListener("input", (e) => {
@@ -576,6 +595,9 @@
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
       };
+
+
+ 
     </script>
   </body>
 </html>
